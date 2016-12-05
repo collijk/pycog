@@ -112,6 +112,8 @@ class Model(object):
         gpus : int, optional
 
         """
+        
+        
         # Theano setup
         os.environ.setdefault('THEANO_FLAGS', '')
         if compiledir is not None:
@@ -141,6 +143,7 @@ class Model(object):
             if hasattr(self.m, k):
                 params[k] = getattr(self.m, k);
 
-        # Train
+        # Train       
+
         trainer = Trainer(params)
         trainer.train(savefile, task, recover=recover)

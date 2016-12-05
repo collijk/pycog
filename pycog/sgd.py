@@ -267,6 +267,8 @@ class SGD(object):
                    File to save network information in.
 
         """
+        
+        
         checkfreq = self.p['checkfreq']
         if checkfreq is None:
             checkfreq = int(1e4)//gradient_data.minibatch_size
@@ -285,10 +287,22 @@ class SGD(object):
         #---------------------------------------------------------------------------------
         # Continue previous run if we can
         #---------------------------------------------------------------------------------
-
+    
+        
+                      
         if os.path.isfile(savefile):
-            with open(savefile) as f:
-                save = pickle.load(f)
+            
+            while True:                
+                try:
+                    with file(savefile, 'rb') as f:
+                        save = pickle.load(f)
+                    break
+                except EOFError:
+                    wait = 5
+                    print("[ {}.RNN ] Got an EOFError, trying again in {} seconds."
+                          .format(THIS, wait))
+                    time.sleep(wait)
+                    
             best          = save['best']
             init_p        = save['current']
             first_iter    = save['iter']

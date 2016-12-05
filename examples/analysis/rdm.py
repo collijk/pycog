@@ -13,6 +13,7 @@ import numpy as np
 
 from pycog          import fittools, RNN, tasktools
 from pycog.figtools import Figure
+from pycog.utils    import dump
 
 THIS = "examples.analysis.rdm"
 
@@ -22,13 +23,25 @@ THIS = "examples.analysis.rdm"
 
 # File to store trials in
 def get_trialsfile(p):
+    if 'ant_level' in p:
+            return join(p['trialspath'], p['name'] + 
+                        '_ant_level_' + str(p['ant_level']) + '_trials.pkl')
     return join(p['trialspath'], p['name'] + '_trials.pkl')
 
 # Load trials
 def load_trials(trialsfile):
-    with open(trialsfile) as f:
-        trials = pickle.load(f)
-
+    
+    while True:             
+        try:
+            with file(trialsfile, 'rb') as f:
+                trials = pickle.load(f)
+                break
+        except EOFError:
+            wait = 5
+            print("[ {}.RNN ] Got an EOFError, trying again in {} seconds."
+                  .format(THIS, wait))
+            time.sleep(wait)
+    
     return trials, len(trials)
 
 # File to store sorted trials in
@@ -111,6 +124,8 @@ def run_trials(p, args):
     # RNN
     rng = np.random.RandomState(p['seed'])
     rnn = RNN(p['savefile'], {'dt': p['dt']}, verbose=False)
+    if 'ant_level' in p:
+        rnn.Wrec[np.where(rnn.Wrec<0)] *= (1 - p['ant_level'])
 
     # Trials
     w = len(str(ntrials))
@@ -140,14 +155,16 @@ def run_trials(p, args):
             info = rnn.run(inputs=(trial_func, trial_args), rng=rng)
 
             # Display trial type
-            if coh == 0:
-                s = "Trial {:>{}}/{}: {:>3}".format(i+1, w, ntrials, info['coh'])
-            else:
-                s = ("Trial {:>{}}/{}: {:>+3}"
-                     .format(i+1, w, ntrials, info['in_out']*info['coh']))
-            sys.stdout.write(backspaces*'\b' + s)
-            sys.stdout.flush()
-            backspaces = len(s)
+            #if coh == 0:
+            #    s = "Trial {:>{}}/{}: {:>3}".format(i+1, w, ntrials, info['coh'])
+            #else:
+            #    s = ("Trial {:>{}}/{}: {:>+3}"
+            #         .format(i+1, w, ntrials, info['in_out']*info['coh']))
+            
+            # Update the user with the current progress
+            if (i/100) % 1 == 0:
+                print("We are {:.2f}% complete".format(100*i/ntrials)) 
+                sys.stdout.flush()
 
             # Save
             dt    = rnn.t[1] - rnn.t[0]
@@ -166,8 +183,7 @@ def run_trials(p, args):
 
     # Save all
     filename = get_trialsfile(p)
-    with open(filename, 'wb') as f:
-        pickle.dump(trials, f, pickle.HIGHEST_PROTOCOL)
+    dump(filename, trials)
     size = os.path.getsize(filename)*1e-9
     print("[ {}.run_trials ] Trials saved to {} ({:.1f} GB)".format(THIS, filename, size))
 
